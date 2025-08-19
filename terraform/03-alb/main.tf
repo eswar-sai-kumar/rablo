@@ -36,7 +36,6 @@ resource "aws_lb_listener" "https" {
   port              = "443"
 
   protocol          = "HTTPS"
-  certificate_arn   = data.aws_ssm_parameter.acm_certificate_arn.value
   ssl_policy        = "ELBSecurityPolicy-2016-08"
 
   default_action {
