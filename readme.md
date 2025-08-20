@@ -175,4 +175,10 @@ For a scalable and resilient production environment, the application was deploye
     ```
 3.  To test, access the **DNS name** of the Application Load Balancer in a web browser.
 
+## Video Tutorial 🎥
+
+A complete video tutorial was created to walk through the entire process, from setting up the initial GitHub repository to the final, automated deployment on AWS.
+
+* Video Link: [*https://www.loom.com/share/65bc54ac1016490d877e193d255717df?sid=1de8b79b-41bd-4917-9874-32ca7fcbd579*]
+
 
