@@ -4,15 +4,13 @@
 
 ## 📜 Project Overview
 
-This project demonstrates a complete, end-to-end DevOps workflow for deploying a **Node.js (Express)** web application. The primary objective is to showcase proficiency in containerization with **Docker**, setting up a reverse proxy with **NGINX**, and deploying a scalable, highly-available architecture on **Amazon Web Services (AWS)** using EC2 and an Application Load Balancer (ALB). The entire process is automated using a **CI/CD pipeline** built with GitHub Actions.
+This project demonstrates a complete, end-to-end DevOps workflow for deploying a **Node.js (Express)** web application. The primary objective is to showcase proficiency in containerization with **Docker**, setting up a reverse proxy with **NGINX**, and deploying a scalable, highly-available architecture on **Amazon Web Services (AWS)** using EC2 and an Application Load Balancer (ALB).
 
 ### Table of Contents
 1.  [**Part 1: Docker Containerization**](#part-1-docker-containerization-🐳)
 2.  [**Part 2: NGINX as a Reverse Proxy**](#part-2-nginx-as-a-reverse-proxy-🔄)
 3.  [**Part 3: AWS Deployment with Load Balancer**](#part-3-aws-deployment-with-load-balancer-☁️)
-4.  [**Bonus: CI/CD Automation Pipeline**](#bonus-cicd-automation-pipeline-🚀)
-5.  [**Challenges & Solutions**](#challenges--solutions-🧠)
-6.  [**Video Tutorial**](#video-tutorial-🎥)
+4.  [**Video Tutorial**](#video-tutorial-🎥)
 
 ---
 
@@ -26,7 +24,7 @@ The first step was to containerize the Node.js application using Docker. This ap
 #### 1. Dockerfile
 The following `Dockerfile` defines the steps to build the application image:
 
-```dockerfile
+```
 FROM node:20-alpine
 
 # Create non-root user
@@ -35,29 +33,25 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Create app directory
 WORKDIR /opt/app
 
-# Copy package files first for better caching
-COPY package*.json ./
+# Copy files
+COPY . .
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application code
-COPY . .
-
 # Use non-root user
 USER appuser
 
-# Expose the application port
+# Expose port
 EXPOSE 8080
 
-# Run the application
+# Run app
 CMD ["npm", "start"]
 ```
 
 #### 2. Docker Hub Image
 The resulting Docker image is pushed to Docker Hub and is publicly accessible here:
-* **Image Link:** `https://hub.docker.com/r/your-dockerhub-username/your-nodejs-app-name`
-    > **Note:** Replace with your actual Docker Hub username and image name.
+* **Image Link:** `https://hub.docker.com/repository/docker/eswarsaikumar/rablo/general`
 
 #### 3. Instructions to Run Locally
 To build and run this container on your local machine:
@@ -68,11 +62,15 @@ To build and run this container on your local machine:
     ```
 2.  **Run the container:**
     ```bash
-    docker run -p 8080:8080 your-dockerhub-username/your-nodejs-app-name
+    docker run -p 80:80 your-dockerhub-username/your-nodejs-app-name
     ```
 3.  **Verify:** Open your browser and navigate to `http://localhost:8080`.
 
 ---
+<img width="1538" height="521" alt="Screenshot 2025-08-20 073218" src="https://github.com/user-attachments/assets/53236957-9c91-418c-8581-108a5ba1171e" />
+<img width="1552" height="398" alt="Screenshot 2025-08-20 073244" src="https://github.com/user-attachments/assets/3cca76c0-8d5f-4e69-ad1f-319efda2f6b9" />
+<img width="1881" height="349" alt="Screenshot 2025-08-20 073322" src="https://github.com/user-attachments/assets/d90c550b-c19b-4b70-b739-2343800b8671" />
+
 
 ## Part 2: NGINX as a Reverse Proxy 🔄
 
@@ -82,15 +80,15 @@ NGINX was configured as a reverse proxy to manage incoming traffic. This is a be
 ### Deliverables
 
 #### 1. `nginx.conf`
-This configuration file instructs NGINX to listen on port 80 and forward all traffic to the Node.js container on its internal port, 8080.
+This configuration file instructs NGINX to listen on port 80 and forward all traffic to the Node.js container on its internal port, 80.
 
 ```nginx
 upstream webapp {
-    # 'app:8080' refers to the service named 'app' on its exposed port
-    server app:8080;
+    server app:80;
 }
 
 server {
+    # NGINX listens on the standard web port 80
     listen 80;
 
     location / {
@@ -111,13 +109,15 @@ version: '3.7'
 
 services:
   app:
+    # This will build the image from the Dockerfile in the current directory
     build: .
+    # You can also use the image from Docker Hub if you prefer
     # image: your-dockerhub-username/your-nodejs-app-name
 
   nginx:
     image: nginx:1.21-alpine
     ports:
-      - "80:80"
+      - "8080:8080"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
@@ -127,11 +127,14 @@ services:
 #### 3. Instructions to Run
 1.  **Start the services:**
     ```bash
-    docker-compose up
+    docker compose up
     ```
 2.  **Verify:** Open your browser and navigate to `http://localhost`.
+   
+<img width="1888" height="682" alt="Screenshot 2025-08-20 072352" src="https://github.com/user-attachments/assets/a32bba13-3af8-4064-9de4-ab93191cf1f3" />
 
----
+<img width="939" height="162" alt="Screenshot 2025-08-20 072414" src="https://github.com/user-attachments/assets/57507578-cf63-409a-b94d-a4d5ce0e4244" />
+
 
 ## Part 3: AWS Deployment with Load Balancer ☁️
 
@@ -141,16 +144,28 @@ For a scalable and resilient production environment, the application was deploye
 ### Deliverables
 
 #### 1. EC2 and ALB Configuration
-* **EC2 Instances:** Two `t2.micro` instances were launched using the Amazon Linux 2 AMI. Docker was installed on each instance.
+* **EC2 Instances:** Two `t2.micro` instances were launched using RHEL-9 AMI. Docker was installed on each instance.
 * **Security Groups:** Configured to allow HTTP traffic (port 80) from anywhere and SSH traffic (port 22) from a specific IP for security.
 * **Application Load Balancer (ALB):** An internet-facing ALB was configured to listen on port 80.
 * **Target Group:** The two EC2 instances were registered in a target group. The ALB forwards requests to this group on port 80 and performs health checks on the `/` endpoint.
 
 #### 2. Screenshots
+<img width="1890" height="401" alt="Screenshot 2025-08-19 183754" src="https://github.com/user-attachments/assets/23f17a34-7c1d-4e21-96a4-615c3e71253f" />
+<img width="1578" height="680" alt="Screenshot 2025-08-19 183919" src="https://github.com/user-attachments/assets/e570b1e0-4f7a-4fdc-9259-786c19efbfed" />
+<img width="1382" height="377" alt="Screenshot 2025-08-19 184530" src="https://github.com/user-attachments/assets/fb8b7409-3949-4c5a-9fd9-1fa10e664a52" />
+<img width="1327" height="465" alt="Screenshot 2025-08-19 184745" src="https://github.com/user-attachments/assets/d5a0cd19-2b29-4111-acb4-79f6433cfb5d" />
+<img width="1890" height="740" alt="Screenshot 2025-08-19 184843" src="https://github.com/user-attachments/assets/c3153aa3-fb76-4b8a-b1d5-cfd23edc9f5b" />
+<img width="1866" height="658" alt="Screenshot 2025-08-20 071611" src="https://github.com/user-attachments/assets/238d1454-7763-4e7e-a885-dac55677ec59" />
+<img width="1440" height="127" alt="Screenshot 2025-08-20 071619" src="https://github.com/user-attachments/assets/08625625-e83a-4fe5-834f-3675dcbc2827" />
+<img width="880" height="204" alt="Screenshot 2025-08-20 071552" src="https://github.com/user-attachments/assets/c4abd4d7-46cc-44bd-a77a-3d7ba7028d33" />
+<img width="1892" height="673" alt="Screenshot 2025-08-20 080659" src="https://github.com/user-attachments/assets/1095747b-ae97-4b51-b887-1f5247310b23" />
+<img width="1569" height="450" alt="Screenshot 2025-08-20 080710" src="https://github.com/user-attachments/assets/6d74fe4f-c805-4487-8e87-077b58f7da2d" />
+<img width="1579" height="311" alt="Screenshot 2025-08-20 080743" src="https://github.com/user-attachments/assets/7ee58fb5-26f6-4057-9cb7-866f03db6e97" />
+<img width="1553" height="417" alt="Screenshot 2025-08-20 080909" src="https://github.com/user-attachments/assets/ec9c95d2-f76e-42b6-ae3c-55608ffa58bb" />
+<img width="1574" height="499" alt="Screenshot 2025-08-20 081030" src="https://github.com/user-attachments/assets/cc57595f-6677-4ddd-a5a5-9b5a286f3497" />
+<img width="1545" height="453" alt="Screenshot 2025-08-20 081038" src="https://github.com/user-attachments/assets/b1b8b851-8517-4c8c-9278-92b1f6aed3df" />
+<img width="928" height="214" alt="Screenshot 2025-08-20 081237" src="https://github.com/user-attachments/assets/cebd9141-8212-4eca-a7f4-f8a9370e2683" />
 
-[**Screenshot of your AWS ALB Listeners and Target Group Configuration Here**]
-
-[**Screenshot of your two running EC2 Instances Here**]
 
 #### 3. Deployment and Testing
 1.  SSH into each EC2 instance and install Docker.
@@ -160,95 +175,4 @@ For a scalable and resilient production environment, the application was deploye
     ```
 3.  To test, access the **DNS name** of the Application Load Balancer in a web browser.
 
----
 
-## Bonus: CI/CD Automation Pipeline 🚀
-
-### Approach
-To automate the entire deployment process, a CI/CD pipeline was created using **GitHub Actions**. This pipeline automatically triggers on every push to the `main` branch. It builds a new Docker image, pushes it to Docker Hub, and then deploys the new version to both EC2 instances without any manual intervention.
-
-### Deliverables
-
-#### 1. GitHub Actions Workflow (`.github/workflows/deploy.yml`)
-
-```yaml
-name: Build and Deploy Node.js App to EC2
-
-on:
-  push:
-    branches: [ "main" ]
-
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: your-dockerhub-username/your-nodejs-app-name:latest
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        host: [${{ secrets.EC2_HOST_1 }}, ${{ secrets.EC2_HOST_2 }}]
-    steps:
-      - name: Deploy to EC2 instance
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ matrix.host }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            docker pull your-dockerhub-username/your-nodejs-app-name:latest
-            docker stop rablo-app-container || true
-            docker rm rablo-app-container || true
-            docker run -d --name rablo-app-container -p 80:8080 your-dockerhub-username/your-nodejs-app-name:latest
-```
-
-#### 2. How the Pipeline Works
-1.  **Trigger:** A developer pushes a code change to the `main` branch.
-2.  **Build & Push:** GitHub Actions builds the Node.js Docker image and pushes it to Docker Hub.
-3.  **Deploy:** The next job SSHs into each EC2 server, pulls the latest image, and restarts the container with the new version, ensuring zero-downtime deployment.
-
----
-
-## Challenges & Solutions 🧠
-
-1.  **Challenge:** NGINX returning a `502 Bad Gateway` error.
-    * **Solution:** This was resolved by using the `depends_on` key in `docker-compose.yml` to ensure the Node.js `app` container starts and is healthy before the `nginx` container starts.
-
-2.  **Challenge:** EC2 instances marked as "unhealthy" by the ALB.
-    * **Solution:** The EC2 security group was misconfigured. It was updated to allow incoming traffic on port 80 specifically from the Application Load Balancer's security group, which allows the health checks to pass.
-
-3.  **Challenge:** `npm install` failing within the Docker build.
-    * **Solution:** This was traced to a missing `package-lock.json` file. Running `npm install` locally to generate the lock file and committing it to the repository ensured reproducible builds inside the container.
-
----
-
-## Video Tutorial 🎥
-
-A complete video tutorial was created to walk through the entire process, from setting up the initial GitHub repository to the final, automated deployment on AWS.
-
-* **Video Link:** [**Link to Your Video Tutorial on YouTube/Vimeo Here**]
-
-### Video Outline
-* **Intro (0:00):** Project overview and goals.
-* **Part 1 (1:30):** Writing the Node.js app and the `Dockerfile`. Building and running locally.
-* **Part 2 (5:00):** Configuring NGINX and setting up `docker-compose`.
-* **Part 3 (8:45):** Launching EC2 instances, installing Docker, and configuring the AWS Application Load Balancer.
-* **Part 4 (15:00):** Setting up the CI/CD pipeline with GitHub Actions, including configuring secrets.
-* **Demo (20:00):** Making a code change, pushing to GitHub, and watching the automated deployment happen in real-time.
-* **Outro (22:30):** Summary and key takeaways.
